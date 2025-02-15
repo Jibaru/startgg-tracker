@@ -25,7 +25,7 @@
 
       document.title = `Matches de ${playerName}`;
 
-      const token = "82339b75b80df03e0ca411fc8450a107";
+      const t = "82339b75b80df03e0ca411fc8450a107";
       const perPageSets = 50; // Cantidad de sets por página
       let currentPage = 1;
       let totalPages = 1;
@@ -62,7 +62,7 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${t}`,
           },
           body: JSON.stringify({ query, variables }),
         })

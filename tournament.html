@@ -30,7 +30,7 @@
         document.querySelector(".container").innerHTML =
           "<p>Torneo no especificado.</p>";
       }
-      const token = "82339b75b80df03e0ca411fc8450a107";
+      const t = "82339b75b80df03e0ca411fc8450a107";
       const query = `
       query GetTournamentEvents($slug: String!) {
         tournament(slug: $slug) {
@@ -50,7 +50,7 @@
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${t}`,
         },
         body: JSON.stringify({ query, variables }),
       })
