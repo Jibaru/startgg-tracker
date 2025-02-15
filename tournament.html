@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Eventos del Torneo</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!-- Barra de navegación -->
+    <div class="navbar">
+      <a href="index.html">Inicio</a>
+      <a href="javascript:history.back()">Atrás</a>
+    </div>
+    <div class="container">
+      <h1>Eventos del Torneo</h1>
+      <div class="card">
+        <input
+          type="text"
+          id="eventSearch"
+          class="search-input"
+          placeholder="Buscar evento..."
+        />
+        <ul id="eventList"></ul>
+      </div>
+    </div>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const tournamentSlug = urlParams.get("tournamentSlug");
+      if (!tournamentSlug) {
+        document.querySelector(".container").innerHTML =
+          "<p>Torneo no especificado.</p>";
+      }
+      const token = "82339b75b80df03e0ca411fc8450a107";
+      const query = `
+      query GetTournamentEvents($slug: String!) {
+        tournament(slug: $slug) {
+          id
+          name
+          events {
+            id
+            name
+            slug
+          }
+        }
+      }
+    `;
+      const variables = { slug: tournamentSlug };
+
+      fetch("https://api.start.gg/gql/alpha", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ query, variables }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          const tournament = data.data.tournament;
+          if (!tournament) {
+            document.getElementById("eventList").innerHTML =
+              "Torneo no encontrado.";
+            return;
+          }
+          const events = tournament.events;
+          const eventListEl = document.getElementById("eventList");
+          function renderEvents(filter = "") {
+            eventListEl.innerHTML = "";
+            const filtered = events.filter((e) =>
+              e.name.toLowerCase().includes(filter.toLowerCase())
+            );
+            filtered.forEach((e) => {
+              const li = document.createElement("li");
+              li.innerHTML = `<a href="event.html?tournamentSlug=${encodeURIComponent(
+                tournamentSlug
+              )}&eventSlug=${encodeURIComponent(e.slug)}">${e.name}</a>`;
+              eventListEl.appendChild(li);
+            });
+          }
+          document
+            .getElementById("eventSearch")
+            .addEventListener("input", (e) => {
+              renderEvents(e.target.value);
+            });
+          renderEvents();
+        })
+        .catch((err) => {
+          console.error(err);
+          document.getElementById("eventList").innerHTML =
+            "Error al cargar eventos.";
+        });
+    </script>
+  </body>
+</html>

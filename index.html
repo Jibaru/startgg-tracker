@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Listado de Torneos</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!-- Barra de navegación -->
+    <div class="navbar">
+      <a href="index.html">Inicio</a>
+    </div>
+    <div class="container">
+      <h1>Listado de Torneos</h1>
+      <div class="card">
+        <input
+          type="text"
+          id="tournamentSearch"
+          class="search-input"
+          placeholder="Buscar torneo..."
+        />
+        <ul id="tournamentList"></ul>
+      </div>
+    </div>
+    <script>
+      const tournaments = [
+        { name: "Warlock's Dark Renewal", slug: "warlock-s-dark-renewal" },
+        { name: "Genesis X", slug: "genesis-x" },
+      ];
+
+      const tournamentListEl = document.getElementById("tournamentList");
+      const searchInput = document.getElementById("tournamentSearch");
+
+      function renderTournaments(filter = "") {
+        tournamentListEl.innerHTML = "";
+        const filtered = tournaments.filter((t) =>
+          t.name.toLowerCase().includes(filter.toLowerCase())
+        );
+        filtered.forEach((t) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<a href="tournament.html?tournamentSlug=${encodeURIComponent(
+            t.slug
+          )}">${t.name}</a>`;
+          tournamentListEl.appendChild(li);
+        });
+      }
+
+      searchInput.addEventListener("input", (e) => {
+        renderTournaments(e.target.value);
+      });
+
+      renderTournaments();
+    </script>
+  </body>
+</html>

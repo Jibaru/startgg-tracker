@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Matches del Jugador</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!-- Barra de navegación -->
+    <div class="navbar">
+      <a href="index.html">Inicio</a>
+      <a href="javascript:history.back()">Atrás</a>
+    </div>
+    <div class="container">
+      <h1>Matches del Jugador en el Evento</h1>
+      <div id="content">Cargando matches...</div>
+      <div id="loadMoreContainer"></div>
+    </div>
+    <script>
+      // Obtener parámetros de la URL: eventSlug, playerId y playerName
+      const urlParams = new URLSearchParams(window.location.search);
+      const eventSlug = urlParams.get("eventSlug");
+      const playerId = urlParams.get("playerId");
+      const playerName = urlParams.get("playerName");
+
+      document.title = `Matches de ${playerName}`;
+
+      const token = "82339b75b80df03e0ca411fc8450a107";
+      const perPageSets = 50; // Cantidad de sets por página
+      let currentPage = 1;
+      let totalPages = 1;
+      let allMatches = []; // Acumulamos los sets
+
+      function fetchMatches(page) {
+        const query = `
+        query GetPlayerMatches($eventSlug: String!, $playerId: ID!, $page: Int!, $perPage: Int!) {
+          event(slug: $eventSlug) {
+            id
+            name
+            sets(page: $page, perPage: $perPage, filters: { entrantIds: [$playerId] }) {
+              nodes {
+                id
+                fullRoundText
+                slots {
+                  entrant {
+                    id
+                    name
+                  }
+                }
+              }
+              pageInfo {
+                totalPages
+                page
+                total
+              }
+            }
+          }
+        }
+      `;
+        const variables = { eventSlug, playerId, page, perPage: perPageSets };
+        fetch("https://api.start.gg/gql/alpha", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ query, variables }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            const eventData = data.data.event;
+            if (!eventData) {
+              document.getElementById("content").textContent =
+                "Evento no encontrado.";
+              return;
+            }
+            totalPages = data.data.event.sets.pageInfo.totalPages;
+            // Acumular los sets de esta página
+            let newMatches = [];
+            eventData.sets.nodes.forEach((set) => {
+              // Filtrar para omitir el jugador de los oponentes
+              const opponents = set.slots
+                .filter(
+                  (slot) => slot.entrant && String(slot.entrant.id) !== playerId
+                )
+                .map((slot) => slot.entrant.name)
+                .join(", ");
+              const oppText = opponents.trim() || "N/A";
+              // Clave compuesta para deduplicar
+              const key = set.fullRoundText.trim() + "|" + oppText;
+              newMatches.push({
+                key,
+                fullRoundText: set.fullRoundText,
+                opponents: oppText,
+              });
+            });
+            // Deduplicar: agregar solo si no existe en allMatches
+            newMatches.forEach((m) => {
+              if (!allMatches.some((am) => am.key === m.key)) {
+                allMatches.push(m);
+              }
+            });
+            renderMatches();
+            renderLoadMore();
+          })
+          .catch((err) => {
+            console.error(err);
+            document.getElementById("content").textContent =
+              "Error al cargar los matches.";
+          });
+      }
+
+      function renderMatches() {
+        let html = "";
+        if (allMatches.length === 0) {
+          html +=
+            "<p>No se encontraron matches para este jugador en este evento.</p>";
+        } else {
+          // Se asume que los matches se han acumulado en el orden en que se jugaron.
+          // Se marca el último match (el último de la lista) con fondo amarillo.
+          const firstIndex = 0;
+          allMatches.forEach((match, index) => {
+            const cardClass =
+              index === firstIndex ? "match-card last-match" : "match-card";
+            html += `<div class="${cardClass}">`;
+            html += `<div class="match-header">Ronda: ${match.fullRoundText}</div>`;
+            html += `<div class="match-details"><strong>Oponente(s):</strong> ${match.opponents}</div>`;
+            html += `</div>`;
+          });
+        }
+        document.getElementById("content").innerHTML = html;
+      }
+
+      function renderLoadMore() {
+        let loadMoreContainer = document.getElementById("loadMoreContainer");
+        if (currentPage < totalPages) {
+          loadMoreContainer.innerHTML = `<button id="loadMoreBtn">Cargar más</button>`;
+          document
+            .getElementById("loadMoreBtn")
+            .addEventListener("click", () => {
+              currentPage++;
+              fetchMatches(currentPage);
+            });
+        } else {
+          loadMoreContainer.innerHTML = "";
+        }
+      }
+
+      // Cargar la primera página de matches
+      fetchMatches(currentPage);
+    </script>
+  </body>
+</html>

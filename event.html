@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Jugadores del Evento</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!-- Barra de navegación -->
+    <div class="navbar">
+      <a href="index.html">Inicio</a>
+      <a href="javascript:history.back()">Atrás</a>
+    </div>
+    <div class="container">
+      <h1>Jugadores del Evento</h1>
+      <div class="card">
+        <input
+          type="text"
+          id="playerSearch"
+          class="search-input"
+          placeholder="Buscar jugador..."
+        />
+        <div id="playerTableContainer"></div>
+        <div id="paginationControls"></div>
+      </div>
+    </div>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const tournamentSlug = urlParams.get("tournamentSlug");
+      const eventSlug = urlParams.get("eventSlug");
+      if (!eventSlug) {
+        document.querySelector(".container").innerHTML =
+          "<p>Evento no especificado.</p>";
+      }
+      const token = "82339b75b80df03e0ca411fc8450a107";
+      let currentPage = 1;
+      const perPage = 50; // Cantidad de jugadores por página
+      let currentSearch = "";
+      let debounceTimeout;
+
+      function fetchPlayers(page = 1, search = "") {
+        const query = `
+        query GetEventEntrants($eventSlug: String!, $page: Int!, $perPage: Int!, $search: String) {
+          event(slug: $eventSlug) {
+            id
+            name
+            entrants(query: { page: $page, perPage: $perPage, filter: { name: $search } }) {
+              nodes {
+                id
+                name
+              }
+              pageInfo {
+                totalPages
+                page
+                total
+              }
+            }
+          }
+        }
+      `;
+        const variables = { eventSlug, page, perPage, search };
+        fetch("https://api.start.gg/gql/alpha", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ query, variables }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            const eventData = data.data.event;
+            if (!eventData) {
+              document.getElementById("playerTableContainer").innerHTML =
+                "Evento no encontrado.";
+              return;
+            }
+            const entrants = eventData.entrants.nodes;
+            const pageInfo = eventData.entrants.pageInfo;
+            renderPlayersTable(entrants);
+            renderPagination(pageInfo);
+          })
+          .catch((err) => {
+            console.error(err);
+            document.getElementById("playerTableContainer").innerHTML =
+              "Error al cargar jugadores.";
+          });
+      }
+
+      function renderPlayersTable(entrants) {
+        let html = `<table border="1" cellpadding="5" cellspacing="0" width="100%">
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre</th>
+                    </tr>`;
+        entrants.forEach((p) => {
+          html += `<tr>
+                  <td>${p.id}</td>
+                  <td><a href="matches.html?eventSlug=${encodeURIComponent(
+                    eventSlug
+                  )}&playerId=${encodeURIComponent(
+            p.id
+          )}&playerName=${encodeURIComponent(p.name)}">${p.name}</a></td>
+                </tr>`;
+        });
+        html += `</table>`;
+        document.getElementById("playerTableContainer").innerHTML = html;
+      }
+
+      function renderPagination(pageInfo) {
+        let html = "";
+        if (pageInfo.page > 1) {
+          html += `<button id="prevPage">Anterior</button> `;
+        }
+        html += `Página ${pageInfo.page} de ${pageInfo.totalPages}`;
+        if (pageInfo.page < pageInfo.totalPages) {
+          html += ` <button id="nextPage">Siguiente</button>`;
+        }
+        document.getElementById("paginationControls").innerHTML = html;
+        if (document.getElementById("prevPage")) {
+          document.getElementById("prevPage").addEventListener("click", () => {
+            currentPage--;
+            fetchPlayers(currentPage, currentSearch);
+          });
+        }
+        if (document.getElementById("nextPage")) {
+          document.getElementById("nextPage").addEventListener("click", () => {
+            currentPage++;
+            fetchPlayers(currentPage, currentSearch);
+          });
+        }
+      }
+
+      // Debounce para esperar 500 ms después de escribir
+      document.getElementById("playerSearch").addEventListener("input", (e) => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+          currentSearch = e.target.value;
+          currentPage = 1;
+          fetchPlayers(currentPage, currentSearch);
+        }, 500);
+      });
+
+      fetchPlayers(currentPage, currentSearch);
+    </script>
+  </body>
+</html>
