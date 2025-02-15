@@ -12,7 +12,10 @@
       <a href="javascript:history.back()">Atrás</a>
     </div>
     <div class="container">
-      <h1>Matches del Jugador en el Evento</h1>
+      <h1 id="title">Matches del Jugador en el Evento</h1>
+      <div class="card">
+        ℹ️ En amarillo aparecerá el ultimo match del jugador
+      </div>
       <div id="content">Cargando matches...</div>
       <div id="loadMoreContainer"></div>
     </div>
@@ -22,6 +25,10 @@
       const eventSlug = urlParams.get("eventSlug");
       const playerId = urlParams.get("playerId");
       const playerName = urlParams.get("playerName");
+
+      document.getElementById(
+        "title"
+      ).textContent = `Matches de ${playerName} en el Evento`;
 
       document.title = `Matches de ${playerName}`;
 
