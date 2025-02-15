@@ -12,6 +12,11 @@
     </div>
     <div class="container">
       <h1>Listado de Torneos</h1>
+      <!-- Botón para agregar torneo -->
+      <div class="card">
+        <button id="addTournamentBtn">Agregar torneo</button>
+      </div>
+      <!-- Buscador y listado de torneos -->
       <div class="card">
         <input
           type="text"
@@ -21,12 +26,26 @@
         />
         <ul id="tournamentList"></ul>
       </div>
+      <!-- Historial de visitas -->
+      <h2>Historial de Visitas</h2>
+      <div class="card">
+        <ul id="visitedList"></ul>
+      </div>
     </div>
     <script>
-      const tournaments = [
+      // Torneos hardcodeados
+      const hardcodedTournaments = [
         { name: "Warlock's Dark Renewal", slug: "warlock-s-dark-renewal" },
-        { name: "Genesis X-2", slug: "genesis-x2" },
+        { name: "Genesis X", slug: "genesis-x" },
       ];
+
+      // Cargar torneos del usuario almacenados en localStorage ("my-tournaments")
+      const myTournaments = JSON.parse(
+        localStorage.getItem("my-tournaments") || "[]"
+      );
+
+      // Fusionar ambos arrays para mostrarlos juntos
+      const tournaments = [...hardcodedTournaments, ...myTournaments];
 
       const tournamentListEl = document.getElementById("tournamentList");
       const searchInput = document.getElementById("tournamentSearch");
@@ -50,6 +69,53 @@
       });
 
       renderTournaments();
+
+      // Función para "prettificar" un slug
+      function prettifySlug(slug) {
+        // Elimina posibles prefijos "tournament/" o "event/"
+        slug = slug.replace(/(tournament\/|event\/)/gi, "");
+        // Reemplaza guiones por espacios
+        return slug.replace(/-/g, " ");
+      }
+
+      // Función para transformar la descripción guardada
+      function prettifyDesc(desc) {
+        // Se espera que desc tenga el formato:
+        // "Torneo: <tournamentSlug> - Evento: <eventSlug> - Jugador: <playerName>"
+        const parts = desc.split(" - ");
+        if (parts.length < 3) return desc; // Si no cumple el formato, se devuelve igual.
+        function prettifyPart(part, prefix) {
+          let value = part.replace(prefix, "").trim();
+          return prefix + " " + prettifySlug(value);
+        }
+        const torneo = prettifyPart(parts[0], "Torneo:");
+        const evento = prettifyPart(parts[1], "Evento:");
+        const jugador = parts[2]; // Se deja tal cual.
+        return `${torneo} - ${evento} - ${jugador}`;
+      }
+
+      // Mostrar historial de visitas
+      function renderVisited() {
+        const visitedListEl = document.getElementById("visitedList");
+        let visited = JSON.parse(
+          localStorage.getItem("visitedMatches") || "[]"
+        );
+        visitedListEl.innerHTML = "";
+        visited.forEach((item) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<a href="${item.url}">${prettifyDesc(item.desc)}</a>`;
+          visitedListEl.appendChild(li);
+        });
+      }
+
+      renderVisited();
+
+      // Botón para agregar torneo
+      document
+        .getElementById("addTournamentBtn")
+        .addEventListener("click", () => {
+          window.location.href = "add-tournament.html";
+        });
     </script>
   </body>
 </html>
