@@ -101,11 +101,19 @@
           localStorage.getItem("visitedMatches") || "[]"
         );
         visitedListEl.innerHTML = "";
-        visited.forEach((item) => {
-          const li = document.createElement("li");
-          li.innerHTML = `<a href="${item.url}">${prettifyDesc(item.desc)}</a>`;
-          visitedListEl.appendChild(li);
-        });
+
+        if (visited.length > 0) {
+          visited.forEach((item) => {
+            const li = document.createElement("li");
+            li.innerHTML = `<a href="${item.url}">${prettifyDesc(
+              item.desc
+            )}</a>`;
+            visitedListEl.appendChild(li);
+          });
+        } else {
+          visitedListEl.innerHTML =
+            "Revisa la información de algún jugador en algún torneo para ver algo aquí!";
+        }
       }
 
       renderVisited();
