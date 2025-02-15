@@ -14,14 +14,15 @@
     <div class="container">
       <h1 id="title">Matches del Jugador en el Evento</h1>
       <div class="card">
-        ℹ️ En amarillo aparecerá el ultimo match del jugador
+        ℹ️ En amarillo aparecerá el primer match del jugador.
       </div>
       <div id="content">Cargando matches...</div>
       <div id="loadMoreContainer"></div>
     </div>
     <script>
-      // Obtener parámetros de la URL: eventSlug, playerId y playerName
+      // Obtener parámetros de la URL: tournamentSlug, eventSlug, playerId y playerName
       const urlParams = new URLSearchParams(window.location.search);
+      const tournamentSlug = urlParams.get("tournamentSlug");
       const eventSlug = urlParams.get("eventSlug");
       const playerId = urlParams.get("playerId");
       const playerName = urlParams.get("playerName");
@@ -29,8 +30,20 @@
       document.getElementById(
         "title"
       ).textContent = `Matches de ${playerName} en el Evento`;
-
       document.title = `Matches de ${playerName}`;
+
+      // Guardar la visita de forma única en localStorage
+      (function saveVisit() {
+        const currentUrl = window.location.href;
+        const desc = `Torneo: ${tournamentSlug} - Evento: ${eventSlug} - Jugador: ${playerName}`;
+        let visited = JSON.parse(
+          localStorage.getItem("visitedMatches") || "[]"
+        );
+        if (!visited.some((item) => item.url === currentUrl)) {
+          visited.push({ url: currentUrl, desc: desc });
+          localStorage.setItem("visitedMatches", JSON.stringify(visited));
+        }
+      })();
 
       const t = "82339b75b80df03e0ca411fc8450a107";
       const perPageSets = 50; // Cantidad de sets por página
@@ -40,30 +53,33 @@
 
       function fetchMatches(page) {
         const query = `
-        query GetPlayerMatches($eventSlug: String!, $playerId: ID!, $page: Int!, $perPage: Int!) {
-          event(slug: $eventSlug) {
-            id
-            name
-            sets(page: $page, perPage: $perPage, filters: { entrantIds: [$playerId] }) {
-              nodes {
-                id
-                fullRoundText
-                slots {
-                  entrant {
-                    id
-                    name
+          query GetPlayerMatches($eventSlug: String!, $playerId: ID!, $page: Int!, $perPage: Int!) {
+            event(slug: $eventSlug) {
+              id
+              name
+              sets(page: $page, perPage: $perPage, filters: { entrantIds: [$playerId] }) {
+                nodes {
+                  id
+                  fullRoundText
+                  state
+                  displayScore
+                  winnerId
+                  slots {
+                    entrant {
+                      id
+                      name
+                    }
                   }
                 }
-              }
-              pageInfo {
-                totalPages
-                page
-                total
+                pageInfo {
+                  totalPages
+                  page
+                  total
+                }
               }
             }
           }
-        }
-      `;
+        `;
         const variables = { eventSlug, playerId, page, perPage: perPageSets };
         fetch("https://api.start.gg/gql/alpha", {
           method: "POST",
@@ -85,7 +101,7 @@
             // Acumular los sets de esta página
             let newMatches = [];
             eventData.sets.nodes.forEach((set) => {
-              // Filtrar para omitir el jugador de los oponentes
+              // Filtrar para omitir al jugador de los oponentes
               const opponents = set.slots
                 .filter(
                   (slot) => slot.entrant && String(slot.entrant.id) !== playerId
@@ -99,6 +115,9 @@
                 key,
                 fullRoundText: set.fullRoundText,
                 opponents: oppText,
+                state: set.state, // 1: No iniciado, 2: En progreso, 3: Completado
+                displayScore: set.displayScore,
+                winnerId: set.winnerId,
               });
             });
             // Deduplicar: agregar solo si no existe en allMatches
@@ -124,16 +143,42 @@
             "<p>No se encontraron matches para este jugador en este evento.</p>";
         } else {
           // Se asume que los matches se han acumulado en el orden en que se jugaron.
-          // Se marca el último match (el último de la lista) con fondo amarillo.
-          const firstIndex = 0;
+          // Se marca el primer match (índice 0) con fondo amarillo.
           allMatches.forEach((match, index) => {
             const cardClass =
-              index === firstIndex ? "match-card last-match" : "match-card";
+              index === 0 ? "match-card last-match" : "match-card";
             html += `<div class="${cardClass}">`;
             html += `<div class="match-header">Ronda: ${match.fullRoundText}</div>`;
+            // Determinar el mensaje de estado según el campo "state"
+            let statusMessage = "";
+            if (match.state === 1) {
+              statusMessage = "No iniciado";
+            } else if (match.state === 2) {
+              statusMessage = "En progreso";
+            } else if (match.state === 3) {
+              if (String(match.winnerId) === playerId) {
+                statusMessage = `Ganó ${match.displayScore}`;
+              } else {
+                statusMessage = `Perdió ${match.displayScore}`;
+              }
+            } else {
+              statusMessage = "Estado desconocido";
+            }
+            html += `<div class="match-details"><strong>Estado:</strong> ${statusMessage}</div>`;
             html += `<div class="match-details"><strong>Oponente(s):</strong> ${match.opponents}</div>`;
             html += `</div>`;
           });
+          // Si se han cargado todas las páginas y TODOS los matches están completados (state === 3),
+          // se muestra una tarjeta informativa indicando que el jugador ya finalizó de jugar el evento.
+          if (
+            currentPage === totalPages &&
+            allMatches.length > 0 &&
+            allMatches.every((m) => m.state === 3)
+          ) {
+            html =
+              `<div class="card">ℹ️ El jugador ya finalizó de jugar el evento.</div>` +
+              html;
+          }
         }
         document.getElementById("content").innerHTML = html;
       }
