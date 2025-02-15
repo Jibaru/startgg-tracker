@@ -100,7 +100,11 @@
                     eventSlug
                   )}&playerId=${encodeURIComponent(
             p.id
-          )}&playerName=${encodeURIComponent(p.name)}">${p.name}</a></td>
+          )}&playerName=${encodeURIComponent(
+            p.name
+          )}&tournamentSlug=${encodeURIComponent(tournamentSlug)}">${
+            p.name
+          }</a></td>
                 </tr>`;
         });
         html += `</table>`;
