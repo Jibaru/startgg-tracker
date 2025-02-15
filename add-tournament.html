@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Agregar Torneo</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!-- Barra de navegación -->
+    <div class="navbar">
+      <a href="index.html">Inicio</a>
+      <a href="javascript:history.back()">Atrás</a>
+    </div>
+    <div class="container">
+      <h1>Agregar un torneo al listado</h1>
+      <div class="card">
+        <form id="addTournamentForm">
+          <label for="tournamentUrl">URL del torneo:</label>
+          <input
+            type="text"
+            id="tournamentUrl"
+            name="tournamentUrl"
+            placeholder="https://start.gg/tournament/tu-torneo"
+            required
+          />
+          <button type="submit">Agregar torneo</button>
+        </form>
+        <div id="errorMessage" style="color: red"></div>
+      </div>
+    </div>
+    <script>
+      const token = "82339b75b80df03e0ca411fc8450a107";
+      const form = document.getElementById("addTournamentForm");
+      const errorMessageEl = document.getElementById("errorMessage");
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        errorMessageEl.textContent = "";
+        const url = document.getElementById("tournamentUrl").value.trim();
+        if (!url) return;
+        // Extraer el slug del torneo de la URL.
+        // Por ejemplo: "https://start.gg/tournament/warlock-s-dark-renewal" → slug = "warlock-s-dark-renewal"
+        let slug;
+        try {
+          const urlObj = new URL(url);
+          const parts = urlObj.pathname.split("/").filter(Boolean);
+          // Se asume que el pathname tiene la forma: "tournament/<slug>"
+          if (parts.length < 2 || parts[0].toLowerCase() !== "tournament") {
+            throw new Error("La URL debe contener '/tournament/' y el slug.");
+          }
+          slug = parts[1];
+        } catch (err) {
+          errorMessageEl.textContent = "URL inválida. " + err.message;
+          return;
+        }
+        // Consultar la API para validar si el torneo existe
+        const query = `
+          query GetTournament($slug: String!) {
+            tournament(slug: $slug) {
+              id
+              name
+            }
+          }
+        `;
+        const variables = { slug };
+        fetch("https://api.start.gg/gql/alpha", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ query, variables }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (!data.data || !data.data.tournament) {
+              errorMessageEl.textContent = "El torneo no existe.";
+              return;
+            }
+            const tournament = data.data.tournament;
+            // Guardar el torneo en localStorage como "my-tournaments"
+            let myTournaments = JSON.parse(
+              localStorage.getItem("my-tournaments") || "[]"
+            );
+            // Si ya existe, mostrar error
+            if (myTournaments.some((t) => t.slug === slug)) {
+              errorMessageEl.textContent = "El torneo ya fue agregado.";
+              return;
+            }
+            myTournaments.push({ name: tournament.name, slug });
+            localStorage.setItem(
+              "my-tournaments",
+              JSON.stringify(myTournaments)
+            );
+            // Redirigir a index.html
+            window.location.href = "index.html";
+          })
+          .catch((err) => {
+            errorMessageEl.textContent = "Error al validar el torneo.";
+            console.error(err);
+          });
+      });
+    </script>
+  </body>
+</html>
